@@ -21,6 +21,11 @@ typedef struct {
     int divider_mod;
     int refsel;
     int fractional_mode;
+    int cp_cscale;
+    int cp_bleed;
+    int abldly;
+    int cp_ctrl;
+    int pfd_clk_edge;
 } t_opt_struct;
 
 
@@ -37,6 +42,11 @@ static void print_usage(const char *prog)
          "  -f --frac     fractional part of divider, numerator (int). Default 0.\n"
          "  -m --mod      fractional part of divider, denominator (int). Default n/a (integer mode).\n"
          "  -s --refsel   clock reference selector (int). Default 1 (x1).\n"
+         "  -c --cscale   charge pump coarse scale current. Default 4 (1000uA).\n"
+         "  -b --bleed    charge pump bleed current. Default 32 (0uA).\n"
+         "  -a --abldly   anti-backlash delay. Default 0."
+         "  -l --cpctrl   charge pump control. Default 0 (both on)."
+         "  -e --clkedge  PFD clock edge. Default 0 (both down)."
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
          "  -o --poweroff power off chip\n");
@@ -50,6 +60,11 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
         { "frac",     1, 0, 'f' },
         { "mod",      1, 0, 'm' },
         { "refsel",   1, 0, 's' },
+        { "cscale",   1, 0, 'c' },
+        { "bleed",    1, 0, 'b' },
+        { "abldly",   1, 0, 'a' },
+        { "cpctrl",   1, 0, 'l' },
+        { "clkedge",  1, 0, 'e' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
         { "poweroff", 0, 0, 'o' },
@@ -65,10 +80,15 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
     (*opt_struct).divider_mod=0;
     (*opt_struct).fractional_mode=0;
     (*opt_struct).refsel=1;
+    (*opt_struct).cp_cscale=4;
+    (*opt_struct).cp_bleed=32;
+    (*opt_struct).abldly=0;
+    (*opt_struct).cp_ctrl=0;
+    (*opt_struct).pfd_clk_edge=0;
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:s:rdo", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:s:c:b:rdo", lopts, NULL);
 
         if (c == -1)
             break;
@@ -87,6 +107,21 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
             break;
         case 's':
             (*opt_struct).refsel=atoi(optarg);
+            break;
+        case 'c':
+            (*opt_struct).cp_cscale=atoi(optarg);
+            break;
+        case 'b':
+            (*opt_struct).cp_bleed=atoi(optarg);
+            break;
+        case 'a':
+            (*opt_struct).abldly=atoi(optarg);
+            break;
+        case 'l':
+            (*opt_struct).cp_ctrl=atoi(optarg);
+            break;
+        case 'e':
+            (*opt_struct).pfd_clk_edge=atoi(optarg);
             break;
         case 'r':
             (*opt_struct).reset=1;
@@ -108,7 +143,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
 int main(int argc, char* argv[])
 {
     int regctr, retval;
-    uint16_t data, reg_intdiv, reg_fracdiv, reg_moddiv;
+    uint16_t data, reg_intdiv, reg_fracdiv, reg_moddiv, reg_cpctl, reg_pfdcpctl;
     double frac_divider, f_c, f_vco;
     t_spipintriple spipins;
     t_opt_struct program_options;
@@ -159,6 +194,31 @@ int main(int argc, char* argv[])
     if ((program_options.refsel<0)||(program_options.refsel>4))
     {
         fprintf(stderr, "--refsel must lie between 0 and 4.\n");
+        return(-1);
+    }
+    if ((program_options.cp_cscale<1)||(program_options.cp_cscale>4))
+    {
+        fprintf(stderr, "--cscale must lie between 1 and 4.\n");
+        return(-1);
+    }
+    if ((program_options.cp_bleed<0)||(program_options.cp_bleed>63))
+    {
+        fprintf(stderr, "--bleed must lie between 0 and 63.\n");
+        return(-1);
+    }
+    if ((program_options.abldly<0)||(program_options.abldly>3))
+    {
+        fprintf(stderr, "--abldly must lie between 0 and 3.\n");
+        return(-1);
+    }
+    if ((program_options.cp_ctrl<0)||(program_options.cp_ctrl>4))
+    {
+        fprintf(stderr, "--cpctrl must lie between 0 and 4.\n");
+        return(-1);
+    }
+    if ((program_options.pfd_clk_edge<0)||(program_options.pfd_clk_edge>3))
+    {
+        fprintf(stderr, "--clkedge must lie between 0 and 3.\n");
         return(-1);
     }
 
@@ -221,6 +281,9 @@ int main(int argc, char* argv[])
         f_c = f_vco / 2.0;
         printf("f_VCO=%f, f_c=%f\n",f_vco, f_c);
 
+        reg_cpctl = ADRF6720_BITS_CP_CSCALE(((1 << program_options.cp_cscale) - 1)) | ADRF6720_BITS_CP_BLEED(program_options.cp_bleed);
+        reg_pfdcpctl = ADRF6720_BITS_ABLDLY(program_options.abldly) | ADRF6720_BITS_CP_CTRL(program_options.cp_ctrl) | ADRF6720_BITS_PFD_CLK_EDGE(program_options.pfd_clk_edge);
+
         threewire_write16(spipins, ADRF6720_ENABLES, ADRF6720_FLAG_MOD_EN |
                           ADRF6720_FLAG_QUAD_DIV_EN | ADRF6720_FLAG_LO_1XVCO_EN |
                           ADRF6720_FLAG_VCO_MUX_EN | ADRF6720_FLAG_REF_BUF_EN |
@@ -231,8 +294,8 @@ int main(int argc, char* argv[])
 
         threewire_write16(spipins, ADRF6720_VCO_CTL, ADRF6720_BITS_VCO_LDO_R4SEL(3) | ADRF6720_BITS_VCO_LDO_R2SEL(10) | ADRF6720_BITS_VCO_SEL(0));
         threewire_write16(spipins, ADRF6720_VCO_CTL3, ADRF6720_BITS_VTUNE_DAC_SLOPE(10) | ADRF6720_BITS_VTUNE_DAC_OFFSET(180));
-        threewire_write16(spipins, ADRF6720_CP_CTL, ADRF6720_BITS_CP_CSCALE(15) | ADRF6720_BITS_CP_BLEED(0x20));
-        threewire_write16(spipins, ADRF6720_PFD_CP_CTL, 0);
+        threewire_write16(spipins, ADRF6720_CP_CTL, reg_cpctl);
+        threewire_write16(spipins, ADRF6720_PFD_CP_CTL, reg_pfdcpctl);
 
         threewire_write16(spipins, ADRF6720_INT_DIV, reg_intdiv);
         if(program_options.fractional_mode)

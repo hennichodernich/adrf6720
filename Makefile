@@ -22,5 +22,5 @@ dummy_threewire.o: dummy_threewire.c
 	 $(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -Rf adrf6720 adrf6720.o adrf6720_off adrf6720_off.o rpi_threewire.o dummy_threewire.o
+	rm -Rf adrf6720 adrf6720.o adrf6720_dummy adrf6720_dummy.o rpi_threewire.o dummy_threewire.o
 
