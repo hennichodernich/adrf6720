@@ -1,6 +1,7 @@
 CC      = gcc
 CFLAGS  = -Wall
-LDFLAGS = -lwiringPi
+LDFLAGS = -lm -lwiringPi
+DUMMY_LDFLAGS = -lm
 
 all: adrf6720
 dummy: adrf6720_dummy
@@ -12,7 +13,7 @@ adrf6720_off: adrf6720_off.o rpi_threewire.o
 	$(CC) $(CFLAGS) -o adrf6720_off adrf6720_off.o rpi_threewire.o $(LDFLAGS)
 
 adrf6720_dummy: adrf6720.o dummy_threewire.o
-	$(CC) $(CFLAGS) -o adrf6720_dummy adrf6720.o dummy_threewire.o
+	$(CC) $(CFLAGS) -o adrf6720_dummy adrf6720.o dummy_threewire.o $(DUMMY_LDFLAGS)
 
 adrf6720.o: adrf6720.c
 	 $(CC) $(CFLAGS) -c $<

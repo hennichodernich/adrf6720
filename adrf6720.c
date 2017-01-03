@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <signal.h>
 #include <getopt.h>
+#include <math.h>
 #include "rpi_threewire.h"
 #include "adrf6720.h"
 
@@ -18,6 +19,7 @@ typedef struct {
     int divider_int;
     int divider_frac;
     int divider_mod;
+    int refsel;
     int fractional_mode;
 } t_opt_struct;
 
@@ -34,6 +36,7 @@ static void print_usage(const char *prog)
     puts("  -i --int      integer part of divider (int). Default 75.\n"
          "  -f --frac     fractional part of divider, numerator (int). Default 0.\n"
          "  -m --mod      fractional part of divider, denominator (int). Default n/a (integer mode).\n"
+         "  -s --refsel   clock reference selector (int). Default 1 (x1).\n"
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
          "  -o --poweroff power off chip\n");
@@ -46,6 +49,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
         { "int",      1, 0, 'i' },
         { "frac",     1, 0, 'f' },
         { "mod",      1, 0, 'm' },
+        { "refsel",   1, 0, 's' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
         { "poweroff", 0, 0, 'o' },
@@ -60,10 +64,11 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
     (*opt_struct).divider_frac=0;
     (*opt_struct).divider_mod=0;
     (*opt_struct).fractional_mode=0;
+    (*opt_struct).refsel=1;
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:rdo", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:s:rdo", lopts, NULL);
 
         if (c == -1)
             break;
@@ -79,6 +84,9 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
         case 'm':
             (*opt_struct).divider_mod=atoi(optarg);
             (*opt_struct).fractional_mode=1;
+            break;
+        case 's':
+            (*opt_struct).refsel=atoi(optarg);
             break;
         case 'r':
             (*opt_struct).reset=1;
@@ -101,6 +109,7 @@ int main(int argc, char* argv[])
 {
     int regctr, retval;
     uint16_t data, reg_intdiv, reg_fracdiv, reg_moddiv;
+    double frac_divider, f_c, f_vco;
     t_spipintriple spipins;
     t_opt_struct program_options;
 
@@ -145,6 +154,11 @@ int main(int argc, char* argv[])
     if ((program_options.fractional_mode) && ((program_options.divider_frac<1)||(program_options.divider_frac>65535)||(program_options.divider_mod<1)||(program_options.divider_mod>65535)))
     {
         fprintf(stderr, "--frac and --mod must lie between 1 and 65536.\n");
+        return(-1);
+    }
+    if ((program_options.refsel<0)||(program_options.refsel>4))
+    {
+        fprintf(stderr, "--refsel must lie between 0 and 4.\n");
         return(-1);
     }
 
@@ -194,13 +208,18 @@ int main(int argc, char* argv[])
             reg_fracdiv = (uint16_t)program_options.divider_frac;
             reg_moddiv = (uint16_t)program_options.divider_mod;
             printf("setting up fractional mode with divider %d %d/%d\n",program_options.divider_int,program_options.divider_frac,program_options.divider_mod);
+            frac_divider = (double)program_options.divider_int + ((double)program_options.divider_frac/(double)program_options.divider_mod);
         }
         else
         {
             reg_intdiv = ADRF6720_FLAG_DIV_MODE | ADRF6720_BITS_INT_DIV(program_options.divider_int);
             printf("setting up integer mode with divider %d\n",program_options.divider_int);
+            frac_divider = (double)program_options.divider_int;
 
         }
+        f_vco=32.0*pow(2.0,1.0-(double)program_options.refsel)*2.0*frac_divider;
+        f_c = f_vco / 2.0;
+        printf("f_VCO=%f, f_c=%f\n",f_vco, f_c);
 
         threewire_write16(spipins, ADRF6720_ENABLES, ADRF6720_FLAG_MOD_EN |
                           ADRF6720_FLAG_QUAD_DIV_EN | ADRF6720_FLAG_LO_1XVCO_EN |
@@ -208,7 +227,7 @@ int main(int argc, char* argv[])
                           ADRF6720_FLAG_VCO_EN | ADRF6720_FLAG_DIV_EN |
                           ADRF6720_FLAG_CP_EN | ADRF6720_FLAG_VCO_LDO_EN);
 
-        threewire_write16(spipins, ADRF6720_PFD_CTL, ADRF6720_FLAG_PFD_POLARITY | ADRF6720_BITS_REF_SEL(1));
+        threewire_write16(spipins, ADRF6720_PFD_CTL, ADRF6720_FLAG_PFD_POLARITY | ADRF6720_BITS_REF_SEL(program_options.refsel));
 
         threewire_write16(spipins, ADRF6720_VCO_CTL, ADRF6720_BITS_VCO_LDO_R4SEL(3) | ADRF6720_BITS_VCO_LDO_R2SEL(10) | ADRF6720_BITS_VCO_SEL(0));
         threewire_write16(spipins, ADRF6720_VCO_CTL3, ADRF6720_BITS_VTUNE_DAC_SLOPE(10) | ADRF6720_BITS_VTUNE_DAC_OFFSET(180));
