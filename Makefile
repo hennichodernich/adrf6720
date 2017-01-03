@@ -9,16 +9,10 @@ dummy: adrf6720_dummy
 adrf6720: adrf6720.o rpi_threewire.o
 	$(CC) $(CFLAGS) -o adrf6720 adrf6720.o rpi_threewire.o $(LDFLAGS)
 
-adrf6720_off: adrf6720_off.o rpi_threewire.o
-	$(CC) $(CFLAGS) -o adrf6720_off adrf6720_off.o rpi_threewire.o $(LDFLAGS)
-
 adrf6720_dummy: adrf6720.o dummy_threewire.o
 	$(CC) $(CFLAGS) -o adrf6720_dummy adrf6720.o dummy_threewire.o $(DUMMY_LDFLAGS)
 
 adrf6720.o: adrf6720.c
-	 $(CC) $(CFLAGS) -c $<
-
-adrf6720_off.o: adrf6720_off.c
 	 $(CC) $(CFLAGS) -c $<
 
 rpi_threewire.o: rpi_threewire.c
