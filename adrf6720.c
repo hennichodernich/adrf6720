@@ -5,17 +5,14 @@
 #include <signal.h>
 #include <getopt.h>
 #include <math.h>
-#include "rpi_threewire.h"
+#include "threewire.h"
 #include "adrf6720.h"
-
-#define CS 0     //GPIO 17
-#define SCLK 2   //GPIO 27
-#define SDIO 3   //GPIO 22
 
 typedef struct {
     int reset;
     int dump;
     int poweroff;
+    int nothing;
     int divider_int;
     int divider_frac;
     int divider_mod;
@@ -37,18 +34,19 @@ void INTHandler(int dummy) {
 
 static void print_usage(const char *prog)
 {
-    printf("Usage: %s [-ifmrdo]\n", prog);
+    printf("Usage: %s [-ifmscbalerdno]\n", prog);
     puts("  -i --int      integer part of divider (int). Default 75.\n"
          "  -f --frac     fractional part of divider, numerator (int). Default 0.\n"
          "  -m --mod      fractional part of divider, denominator (int). Default n/a (integer mode).\n"
          "  -s --refsel   clock reference selector (int). Default 1 (x1).\n"
          "  -c --cscale   charge pump coarse scale current. Default 4 (1000uA).\n"
          "  -b --bleed    charge pump bleed current. Default 32 (0uA).\n"
-         "  -a --abldly   anti-backlash delay. Default 0."
-         "  -l --cpctrl   charge pump control. Default 0 (both on)."
-         "  -e --clkedge  PFD clock edge. Default 0 (both down)."
+         "  -a --abldly   anti-backlash delay. Default 0.\n"
+         "  -l --cpctrl   charge pump control. Default 0 (both on).\n"
+         "  -e --clkedge  PFD clock edge. Default 0 (both down).\n"
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
+         "  -n --nothing  do nothing (useful for plain reset or dump)\n"
          "  -o --poweroff power off chip\n");
 }
 
@@ -67,6 +65,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
         { "clkedge",  1, 0, 'e' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
+        { "nothing",  0, 0, 'n' },
         { "poweroff", 0, 0, 'o' },
         { NULL, 0, 0, 0 },
     };
@@ -75,6 +74,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
     (*opt_struct).dump=0;
     (*opt_struct).reset=0;
     (*opt_struct).poweroff=0;
+    (*opt_struct).nothing=0;
     (*opt_struct).divider_int=75;
     (*opt_struct).divider_frac=0;
     (*opt_struct).divider_mod=0;
@@ -88,7 +88,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:s:c:b:rdo", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:s:c:b:rdno", lopts, NULL);
 
         if (c == -1)
             break;
@@ -128,6 +128,9 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
             break;
         case 'd':
             (*opt_struct).dump=1;
+            break;
+        case 'n':
+            (*opt_struct).nothing=1;
             break;
         case 'o':
             (*opt_struct).poweroff=1;
@@ -224,10 +227,11 @@ int main(int argc, char* argv[])
 
     signal(SIGINT, INTHandler);
 
-    spipins.cs=CS;
-    spipins.clk=SCLK;
-    spipins.dio=SDIO;
-    threewire_init(spipins);
+    retval=threewire_init(&spipins);
+    if (retval)
+    {
+        return(-2);
+    }
 
     if (program_options.reset)
     {
@@ -253,7 +257,11 @@ int main(int argc, char* argv[])
     if(finish)
         return(-1);
 
-    if (program_options.poweroff)
+    if (program_options.nothing)
+    {
+        //nothing
+    }
+    else if (program_options.poweroff)
     {
         printf("powering off\n");
         threewire_write16(spipins, ADRF6720_ENABLES, 0);
@@ -321,6 +329,7 @@ int main(int argc, char* argv[])
             }
         }      
     }
+    threewire_close(spipins);
     return(0);
 }
 

@@ -1,13 +1,18 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <wiringPi.h>
-#include "rpi_threewire.h"
+#include "threewire.h"
+#include "config_rpi.h"
 
-int threewire_init(t_spipintriple spipins)
+int threewire_init(t_spipintriple *spipins)
 {
     if (wiringPiSetup() == -1) return 1;
 
-    threewire_clearpins(spipins);
+    (*spipins).cs=CS;
+    (*spipins).clk=SCLK;
+    (*spipins).dio=SDIO;
+
+    threewire_clearpins(*spipins);
 
     return 0;
 };
@@ -29,13 +34,14 @@ int threewire_read16(t_spipintriple spipins, uint8_t addr)
 {
     int data=0;
     uint8_t addr_copy;
-    int bitctr;
+    int bitctr, addr_bit;;
 
     addr_copy = (addr << 1) | 1;
     digitalWrite(spipins.cs,0);
     for (bitctr = 0; bitctr < 8;bitctr++)
     {
-      digitalWrite(spipins.dio, (addr_copy & 0x80));
+      addr_bit= (addr_copy & 0x80) ? 1 : 0;
+      digitalWrite(spipins.dio, addr_bit);
       usleep(1);
       digitalWrite(spipins.clk, 1);
       usleep(1);
@@ -69,14 +75,15 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
 {
     uint16_t data_copy;
     uint8_t addr_copy;
-    int bitctr;
+    int bitctr, addr_bit, data_bit;
 
     addr_copy = (addr << 1) | 0;
     data_copy = data;
     digitalWrite(spipins.cs,0);
     for (bitctr = 0; bitctr < 8;bitctr++)
     {
-      digitalWrite(spipins.dio, (addr_copy & 0x80));
+      addr_bit= (addr_copy & 0x80) ? 1 : 0;
+      digitalWrite(spipins.dio, addr_bit);
       usleep(1);
       digitalWrite(spipins.clk, 1);
       usleep(1);
@@ -87,7 +94,8 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
 
     for (bitctr = 0; bitctr < 16;bitctr++)
     {
-      digitalWrite(spipins.dio, (data_copy & 0x8000));
+      data_bit=(data_copy & 0x8000) ? 1 : 0;
+      digitalWrite(spipins.dio, data_bit);
       usleep(1);
       digitalWrite(spipins.clk, 1);
       usleep(1);
@@ -102,3 +110,8 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
     digitalWrite(spipins.dio, 0);
 
 };
+
+int threewire_close(t_spipintriple spipins)
+{
+    return(0);
+}

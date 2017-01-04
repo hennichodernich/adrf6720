@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <stdint.h>
-#include "dummy_threewire.h"
+#include "threewire.h"
 
-int threewire_init(t_spipintriple spipins)
+int threewire_init(t_spipintriple *spipins)
 { 
     return 0;
 };
@@ -21,3 +21,8 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
 {
 
 };
+
+int threewire_close(t_spipintriple spipins)
+{
+    return(0);
+}
