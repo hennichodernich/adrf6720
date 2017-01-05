@@ -201,10 +201,13 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
         f = ftdi_write_data(ftdi, buf, 1);
         if (f < 0) fprintf(stderr,"write failed\n");
         usleep(1);
-        //digitalWrite(spipins.clk, 0);
-        buf[0] = (data_bit << spipins.dio); // all low, except data pin, if 1
-        f = ftdi_write_data(ftdi, buf, 1);
-        if (f < 0) fprintf(stderr,"write failed\n");
+        if (bitctr<15)
+        {
+            //digitalWrite(spipins.clk, 0);
+            buf[0] = (data_bit << spipins.dio); // all low, except data pin, if 1
+            f = ftdi_write_data(ftdi, buf, 1);
+            if (f < 0) fprintf(stderr,"write failed\n");
+        }
 
         data_copy = data_copy << 1;
     }

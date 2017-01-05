@@ -58,8 +58,8 @@ int threewire_read16(t_spipintriple spipins, uint8_t addr)
       data = data << 1;
       data |= digitalRead(spipins.dio);
       usleep(1);
-          if (bitctr<15)
-          digitalWrite(spipins.clk, 0);
+      if (bitctr<15)
+        digitalWrite(spipins.clk, 0);
     }
     usleep(1);
     digitalWrite(spipins.cs,1);
@@ -99,7 +99,8 @@ void threewire_write16(t_spipintriple spipins, uint8_t addr, uint16_t data)
       usleep(1);
       digitalWrite(spipins.clk, 1);
       usleep(1);
-      digitalWrite(spipins.clk, 0);
+      if (bitctr<15)
+        digitalWrite(spipins.clk, 0);
       data_copy = data_copy << 1;
     }
     usleep(1);
