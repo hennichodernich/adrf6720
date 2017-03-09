@@ -9,11 +9,7 @@
 #include "adrf6720.h"
 
 #define NUM_REGS 21
-<<<<<<< HEAD
-#define WRITE_LENGTH 10
-=======
 #define WRITE_LENGTH 16
->>>>>>> 3f180918e524192a9a04c0f1139cbf75009b8305
 
 typedef struct {
     int reset;
@@ -172,6 +168,12 @@ int main(int argc, char* argv[])
 
     uint8_t writeorder[WRITE_LENGTH] = {
         ADRF6720_ENABLES,
+	ADRF6720_BALUN_CTL,
+	ADRF6720_MOD_LIN_CTL,
+	ADRF6720_MOD_CTL0,
+	ADRF6720_MOD_CTL1,
+	ADRF6720_DITH_CTL1,
+	ADRF6720_DITH_CTL2,
         ADRF6720_CP_CTL,
         ADRF6720_PFD_CTL,
         ADRF6720_PFD_CP_CTL,
@@ -433,6 +435,7 @@ int main(int argc, char* argv[])
 
         for (regctr=0; regctr < WRITE_LENGTH;regctr++)
         {
+	    printf("writing %02x:\t%04x\n", writeorder[regctr], regs[writeorder[regctr]]);
             threewire_write16(spipins, writeorder[regctr], regs[writeorder[regctr]]);
         }
         usleep(10);
