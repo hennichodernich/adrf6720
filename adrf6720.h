@@ -125,7 +125,7 @@ typedef struct{
   int FRAC;
   int MOD;
   int ENOP;
-  int CSCALE;
+  int cscale_val;
   int BLEED;
   int FSCALE;
   int REF_MUX_SEL;
@@ -134,7 +134,7 @@ typedef struct{
   int VCO_SEL;
   int LO_DRV_LVL;
   int DRVDIV2_EN;
-  int DIV8_END;
+  int DIV8_EN;
   int DIV4_EN;
   int VCO_LDO_R2SEL;
   int VCO_LDO_R4SEL;
@@ -168,10 +168,7 @@ typedef struct{
   double pll_ref_div;
   double pfd_freq;
   double lo_out_freq;
-  double vco_freq;
-  double lo_divide;
-  double prescaler;
-  double PLL_INT;      
+  double vco_freq;  
 }t_adrf6720_settings;
 
 #endif // ADRF6720_H

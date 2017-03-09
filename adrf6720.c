@@ -8,6 +8,9 @@
 #include "threewire.h"
 #include "adrf6720.h"
 
+#define NUM_REGS 21
+#define WRITE_LENGTH 17
+
 typedef struct {
     int reset;
     int dump;
@@ -50,7 +53,7 @@ static void print_usage(const char *prog)
          "  -o --poweroff power off chip\n");
 }
 
-int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
+int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_settings *settings)
 {
 
     const struct option lopts[] = {
@@ -71,20 +74,6 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
     };
     int c;
 
-    (*opt_struct).dump=0;
-    (*opt_struct).reset=0;
-    (*opt_struct).poweroff=0;
-    (*opt_struct).nothing=0;
-    (*opt_struct).divider_int=75;
-    (*opt_struct).divider_frac=0;
-    (*opt_struct).divider_mod=0;
-    (*opt_struct).fractional_mode=0;
-    (*opt_struct).refsel=1;
-    (*opt_struct).cp_cscale=4;
-    (*opt_struct).cp_bleed=32;
-    (*opt_struct).abldly=0;
-    (*opt_struct).cp_ctrl=0;
-    (*opt_struct).pfd_clk_edge=0;
 
     while (1) {
 
@@ -95,33 +84,33 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
 
         switch (c) {
         case 'i':
-            (*opt_struct).divider_int=atoi(optarg);
+            (*settings).INT=atoi(optarg);
             break;
         case 'f':
-            (*opt_struct).divider_frac=atoi(optarg);
-            (*opt_struct).fractional_mode=1;
+            (*settings).FRAC=atoi(optarg);
+            (*settings).DIV_MODE=0;
             break;
         case 'm':
-            (*opt_struct).divider_mod=atoi(optarg);
-            (*opt_struct).fractional_mode=1;
+            (*settings).MOD=atoi(optarg);
+            (*settings).DIV_MODE=0;
             break;
         case 's':
-            (*opt_struct).refsel=atoi(optarg);
+            (*settings).REF_SEL=atoi(optarg);
             break;
         case 'c':
-            (*opt_struct).cp_cscale=atoi(optarg);
+            (*settings).cscale_val=atoi(optarg);
             break;
         case 'b':
-            (*opt_struct).cp_bleed=atoi(optarg);
+            (*settings).BLEED=atoi(optarg);
             break;
         case 'a':
-            (*opt_struct).abldly=atoi(optarg);
+            (*settings).ABLDLY=atoi(optarg);
             break;
         case 'l':
-            (*opt_struct).cp_ctrl=atoi(optarg);
+            (*settings).CPCTRL=atoi(optarg);
             break;
         case 'e':
-            (*opt_struct).pfd_clk_edge=atoi(optarg);
+            (*settings).CLKEDGE=atoi(optarg);
             break;
         case 'r':
             (*opt_struct).reset=1;
@@ -146,12 +135,14 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct)
 int main(int argc, char* argv[])
 {
     int regctr, retval;
-    uint16_t data, reg_intdiv, reg_fracdiv, reg_moddiv, reg_cpctl, reg_pfdcpctl;
-    double frac_divider, f_c, f_vco;
+    uint16_t data;
+    uint16_t regs[128];
+    double frac_divider;
     t_spipintriple spipins;
     t_opt_struct program_options;
+    t_adrf6720_settings settings;
 
-    t_regnamepair regsnames[18] = {
+    t_regnamepair regsnames[NUM_REGS] = {
         {ADRF6720_SOFT_RESET, "SOFT_RESET"},
         {ADRF6720_ENABLES,    "ENABLES"},
         {ADRF6720_INT_DIV,    "INT_DIV"},
@@ -169,57 +160,134 @@ int main(int argc, char* argv[])
         {ADRF6720_DITH_CTL1,  "DITH_CTL1"},
         {ADRF6720_DITH_CTL2,  "DITH_CTL2"},
         {ADRF6720_VCO_CTL2,   "VCO_CTL2"},
-        {ADRF6720_VCO_CTL3,   "VCO_CTL3"}
+        {ADRF6720_VCO_CTL3,   "VCO_CTL3"},
+        {ADRF6720_SCAN,       "SCAN"},
+        {ADRF6720_VERSION1,   "VERSION1"},
+        {ADRF6720_VERSION2,   "VERSION2"}
     };
 
-    retval = parse_opts(argc, argv, &program_options);
+    uint8_t writeorder[WRITE_LENGTH] = {
+        ADRF6720_ENABLES,
+        ADRF6720_SCAN,
+        ADRF6720_CP_CTL,
+        ADRF6720_PFD_CTL,
+        ADRF6720_BALUN_CTL,
+        ADRF6720_MOD_LIN_CTL,
+        ADRF6720_MOD_CTL0,
+        ADRF6720_MOD_CTL1,
+        ADRF6720_PFD_CP_CTL,
+        ADRF6720_DITH_CTL1,
+        ADRF6720_DITH_CTL2,
+        ADRF6720_VCO_CTL2,
+        ADRF6720_VCO_CTL3,
+        ADRF6720_VCO_CTL,
+        ADRF6720_INT_DIV,
+        ADRF6720_FRAC_DIV,
+        ADRF6720_MOD_DIV
+    };
+
+    program_options.dump=0;
+    program_options.reset=0;
+    program_options.poweroff=0;
+    program_options.nothing=0;
+    //(*opt_struct).divider_int=75;
+    //(*opt_struct).divider_frac=0;
+    //(*opt_struct).divider_mod=0;
+
+
+
+    settings.DIV_MODE=1;
+    settings.INT=76;
+    settings.FRAC=384;
+    settings.MOD=1536;
+    settings.cscale_val=1;
+    settings.BLEED=5;
+    settings.FSCALE=0;
+    settings.REF_MUX_SEL=0;
+    settings.PFD_Polarity=1;
+    settings.REF_SEL=1;
+    settings.VCO_SEL=0;
+    settings.LO_DRV_LVL=0;  //1x internal LO mode
+    settings.DRVDIV2_EN=0;  //1x internal LO mode
+    settings.DIV8_EN=0;
+    settings.DIV4_EN=0;
+    settings.VCO_LDO_R2SEL=10;
+    settings.VCO_LDO_R4SEL=3;
+    settings.BAL_COUT=0;
+    settings.BAL_CIN=0;
+    settings.MOD_CDAC=0;
+    settings.MOD_RDAC=32;
+    settings.POLi=2;
+    settings.POLq=1;
+    settings.QLO=0;
+    settings.ILO=0;
+    settings.DCOFFI=0;
+    settings.DCOFFQ=0;
+    settings.CLKEDGE=0;
+    settings.CPCTRL=0;
+    settings.ABLDLY=0;
+    settings.DITH_EN=1;
+    settings.DITH_MAG=3;
+    settings.DITH_VAL=0;
+    settings.VTUNE_CTRL=1;
+    settings.VCO_BAND_SRC=1;
+    settings.BAND=32;
+    settings.SDM_DIVD_CLR=0;
+    settings.BANDCAL=0;
+    settings.VTUNE_DAC_OFFSET=180;
+    settings.VTUNE_DAC_SLOPE=10;
+    settings.pll_ref_in=32.0;
+    settings.pll_ref_div=4.0;
+    settings.lo_out_freq=2440.0;
+
+    retval = parse_opts(argc, argv, &program_options, &settings);
     if (retval==-1)
     {
         print_usage(argv[0]);
         return(-2);
     }
 
-    if ((program_options.fractional_mode) && ((program_options.divider_frac==0) || (program_options.divider_mod==0)))
+    if ((settings.DIV_MODE==0) && ((settings.FRAC==0) || (settings.MOD==0)))
     {
         fprintf(stderr, "If one of --frac or --mod is given, the other one must be given as well for fractional mode.\n");
         return(-1);
     }
-    if ((program_options.divider_int<1)||(program_options.divider_int>2047))
+    if ((settings.INT<1)||(settings.INT>2047))
     {
         fprintf(stderr, "--int must lie between 1 and 2047.\n");
         return(-1);
     }
-    if ((program_options.fractional_mode) && ((program_options.divider_frac<1)||(program_options.divider_frac>65535)||(program_options.divider_mod<1)||(program_options.divider_mod>65535)))
+    if ((settings.DIV_MODE==0) && ((settings.FRAC<1)||(settings.FRAC>65535)||(settings.MOD<1)||(settings.MOD>65535)))
     {
         fprintf(stderr, "--frac and --mod must lie between 1 and 65536.\n");
         return(-1);
     }
-    if ((program_options.refsel<0)||(program_options.refsel>4))
+    if ((settings.REF_SEL<0)||(settings.REF_SEL>4))
     {
         fprintf(stderr, "--refsel must lie between 0 and 4.\n");
         return(-1);
     }
-    if ((program_options.cp_cscale<1)||(program_options.cp_cscale>4))
+    if ((settings.cscale_val<1)||(settings.cscale_val>4))
     {
         fprintf(stderr, "--cscale must lie between 1 and 4.\n");
         return(-1);
     }
-    if ((program_options.cp_bleed<0)||(program_options.cp_bleed>63))
+    if ((settings.BLEED<0)||(settings.BLEED>63))
     {
         fprintf(stderr, "--bleed must lie between 0 and 63.\n");
         return(-1);
     }
-    if ((program_options.abldly<0)||(program_options.abldly>3))
+    if ((settings.ABLDLY<0)||(settings.ABLDLY>3))
     {
         fprintf(stderr, "--abldly must lie between 0 and 3.\n");
         return(-1);
     }
-    if ((program_options.cp_ctrl<0)||(program_options.cp_ctrl>4))
+    if ((settings.CPCTRL<0)||(settings.CPCTRL>4))
     {
         fprintf(stderr, "--cpctrl must lie between 0 and 4.\n");
         return(-1);
     }
-    if ((program_options.pfd_clk_edge<0)||(program_options.pfd_clk_edge>3))
+    if ((settings.CLKEDGE<0)||(settings.CLKEDGE>3))
     {
         fprintf(stderr, "--clkedge must lie between 0 and 3.\n");
         return(-1);
@@ -242,7 +310,7 @@ int main(int argc, char* argv[])
 
     if (program_options.dump)
     {
-        for (regctr=1; regctr < 18;regctr++)
+        for (regctr=1; regctr < NUM_REGS;regctr++)
         {
             data=threewire_read16(spipins, regsnames[regctr].reg);
 
@@ -270,53 +338,108 @@ int main(int argc, char* argv[])
     }
     else
     {
-        if(program_options.fractional_mode)
+        if(settings.DIV_MODE==0)  //fractional mode
         {
-            reg_intdiv = ADRF6720_BITS_INT_DIV(program_options.divider_int);
-            reg_fracdiv = (uint16_t)program_options.divider_frac;
-            reg_moddiv = (uint16_t)program_options.divider_mod;
-            printf("setting up fractional mode with divider %d %d/%d\n",program_options.divider_int,program_options.divider_frac,program_options.divider_mod);
-            frac_divider = (double)program_options.divider_int + ((double)program_options.divider_frac/(double)program_options.divider_mod);
+            printf("setting up fractional mode with divider %d %d/%d\n",settings.INT,settings.FRAC,settings.MOD);
+            regs[ADRF6720_FRAC_DIV] = (uint16_t)settings.FRAC;
+            regs[ADRF6720_MOD_DIV] = (uint16_t)settings.MOD;
+            frac_divider = (double)settings.INT + ((double)settings.FRAC/(double)settings.MOD);
         }
-        else
+        else  //integer mode
         {
-            reg_intdiv = ADRF6720_FLAG_DIV_MODE | ADRF6720_BITS_INT_DIV(program_options.divider_int);
-            printf("setting up integer mode with divider %d\n",program_options.divider_int);
-            frac_divider = (double)program_options.divider_int;
-
+            printf("setting up integer mode with divider %d\n",settings.INT);
+            regs[ADRF6720_FRAC_DIV] = 0;
+            regs[ADRF6720_MOD_DIV] = 0;
+            frac_divider = (double)settings.INT;
         }
-        f_vco=32.0*pow(2.0,1.0-(double)program_options.refsel)*2.0*frac_divider;
-        f_c = f_vco / 2.0;
-        printf("f_VCO=%f, f_c=%f\n",f_vco, f_c);
+        regs[ADRF6720_INT_DIV] = (settings.DIV_MODE ? ADRF6720_FLAG_DIV_MODE : 0)
+                              |  ADRF6720_BITS_INT_DIV(settings.INT);
 
-        reg_cpctl = ADRF6720_BITS_CP_CSCALE(((1 << program_options.cp_cscale) - 1)) | ADRF6720_BITS_CP_BLEED(program_options.cp_bleed);
-        reg_pfdcpctl = ADRF6720_BITS_ABLDLY(program_options.abldly) | ADRF6720_BITS_CP_CTRL(program_options.cp_ctrl) | ADRF6720_BITS_PFD_CLK_EDGE(program_options.pfd_clk_edge);
+        //hardcoded for carrier frequency
 
-        threewire_write16(spipins, ADRF6720_ENABLES, ADRF6720_FLAG_MOD_EN |
-                          ADRF6720_FLAG_QUAD_DIV_EN | ADRF6720_FLAG_LO_1XVCO_EN |
-                          ADRF6720_FLAG_VCO_MUX_EN | ADRF6720_FLAG_REF_BUF_EN |
-                          ADRF6720_FLAG_VCO_EN | ADRF6720_FLAG_DIV_EN |
-                          ADRF6720_FLAG_CP_EN | ADRF6720_FLAG_VCO_LDO_EN);
+        settings.DIV4_EN = 0;
+        settings.DIV8_EN = 0;
+        settings.VCO_SEL = 0;
+        regs[ADRF6720_VCO_CTL] = ADRF6720_BITS_VCO_LDO_R4SEL(settings.VCO_LDO_R4SEL)
+                               | ADRF6720_BITS_VCO_LDO_R2SEL(settings.VCO_LDO_R2SEL)
+                               | ADRF6720_BITS_LO_DRV_LVL(settings.LO_DRV_LVL)
+                               |(settings.DRVDIV2_EN ? ADRF6720_FLAG_DRVDIV2_EN : 0 )
+                               |(settings.DIV8_EN ? ADRF6720_FLAG_DIV8_EN : 0 )
+                               |(settings.DIV4_EN ? ADRF6720_FLAG_DIV4_EN : 0 )
+                               | ADRF6720_BITS_VCO_SEL(settings.VCO_SEL);
 
-        threewire_write16(spipins, ADRF6720_PFD_CTL, ADRF6720_FLAG_PFD_POLARITY | ADRF6720_BITS_REF_SEL(program_options.refsel));
+        //settings.vco_freq = 2.0 * settings.lo_out_freq;
+        settings.pfd_freq = settings.pll_ref_in * settings.pll_ref_div;
+        settings.vco_freq = frac_divider * 2.0 * settings.pfd_freq;
+        settings.lo_out_freq = settings.vco_freq / 2.0;         //because QUAD_DIV_EN==1
 
-        threewire_write16(spipins, ADRF6720_VCO_CTL, ADRF6720_BITS_VCO_LDO_R4SEL(3) | ADRF6720_BITS_VCO_LDO_R2SEL(10) | ADRF6720_BITS_VCO_SEL(0));
-        threewire_write16(spipins, ADRF6720_VCO_CTL3, ADRF6720_BITS_VTUNE_DAC_SLOPE(10) | ADRF6720_BITS_VTUNE_DAC_OFFSET(180));
-        threewire_write16(spipins, ADRF6720_CP_CTL, reg_cpctl);
-        threewire_write16(spipins, ADRF6720_PFD_CP_CTL, reg_pfdcpctl);
+        printf("f_VCO=%f, f_c=%f\n",settings.vco_freq, settings.lo_out_freq);
 
-        threewire_write16(spipins, ADRF6720_INT_DIV, reg_intdiv);
-        if(program_options.fractional_mode)
+        regs[ADRF6720_VCO_CTL3] = ADRF6720_BITS_VTUNE_DAC_SLOPE(settings.VTUNE_DAC_SLOPE)
+                                | ADRF6720_BITS_VTUNE_DAC_OFFSET(settings.VTUNE_DAC_OFFSET);
+
+        regs[ADRF6720_SCAN] = settings.SCAN_EN ? ADRF6720_FLAG_SCAN_EN : 0;
+
+        regs[ADRF6720_VCO_CTL2] = ADRF6720_BITS_VTUNE_CTRL(settings.VTUNE_CTRL)
+                                | (settings.VCO_BAND_SRC ? ADRF6720_FLAG_VCO_BAND_SRC : 0 )
+                                | ADRF6720_BITS_BAND(settings.VCO_BAND);
+
+        regs[ADRF6720_CALIBRATION] = (settings.BANDCAL ? ADRF6720_FLAG_BANDCAL : 0 )
+                                   | (settings.SDM_DIVD_CLR ? ADRF6720_FLAG_SDM_DIVD_CLR : 0);
+
+        regs[ADRF6720_DITH_CTL1] = (settings.DITH_EN ? ADRF6720_FLAG_DITH_EN : 0 )
+                                 |  ADRF6720_BITS_DITH_MAG(settings.DITH_MAG)
+                                 | ((settings.DITH_VAL >= 65536) ? ADRF6720_BITS_DITH_VAL16 : 0);
+
+        regs[ADRF6720_DITH_CTL2] = settings.DITH_VAL % 65536;
+
+        regs[ADRF6720_PFD_CP_CTL] = ADRF6720_BITS_ABLDLY(settings.ABLDLY)
+                                  | ADRF6720_BITS_CP_CTRL(settings.CPCTRL)
+                                  | ADRF6720_BITS_PFD_CLK_EDGE(settings.CLKEDGE);
+
+        regs[ADRF6720_MOD_CTL0] = ADRF6720_BITS_POL_I(settings.POLi)
+                                | ADRF6720_BITS_POL_Q(settings.POLq)
+                                | ADRF6720_BITS_I_LO(settings.ILO)
+                                | ADRF6720_BITS_Q_LO(settings.QLO);
+
+
+        regs[ADRF6720_MOD_CTL1] = ADRF6720_BITS_DCOFF_I(settings.DCOFFI)
+                                | ADRF6720_BITS_DCOFF_Q(settings.DCOFFQ);
+
+
+        regs[ADRF6720_MOD_LIN_CTL] = ADRF6720_BITS_MOD_RSEL(settings.MOD_RDAC)
+                                  | ADRF6720_BITS_MOD_CSEL(settings.MOD_CDAC);
+
+        regs[ADRF6720_CP_CTL] = ADRF6720_BITS_CP_CSCALE(((1 << settings.cscale_val) - 1))
+                              | ADRF6720_BITS_CP_BLEED(settings.BLEED);
+
+        regs[ADRF6720_PFD_CTL] =  ADRF6720_BITS_REF_MUX_SEL(settings.REF_MUX_SEL)
+                               | (settings.PFD_Polarity ? ADRF6720_FLAG_PFD_POLARITY : 0 )
+                               |  ADRF6720_BITS_REF_SEL(settings.REF_SEL);
+
+        regs[ADRF6720_BALUN_CTL] = ADRF6720_BITS_BAL_COUT(settings.BAL_COUT)
+                                 | ADRF6720_BITS_BAL_CIN(settings.BAL_CIN);
+
+        regs[ADRF6720_ENABLES] = ADRF6720_FLAG_MOD_EN         //bit 10      0x067e
+                               | ADRF6720_FLAG_QUAD_DIV_EN    //bit 9
+                               | ADRF6720_FLAG_VCO_MUX_EN     //bit 6
+                               | ADRF6720_FLAG_REF_BUF_EN     //bit 5
+                               | ADRF6720_FLAG_VCO_EN         //bit 4
+                               | ADRF6720_FLAG_DIV_EN         //bit 3
+                               | ADRF6720_FLAG_CP_EN          //bit 2
+                               | ADRF6720_FLAG_VCO_LDO_EN;    //bit 1
+
+
+        for (regctr=0; regctr < WRITE_LENGTH;regctr++)
         {
-            threewire_write16(spipins, ADRF6720_FRAC_DIV, reg_fracdiv);
-            threewire_write16(spipins, ADRF6720_MOD_DIV, reg_moddiv);
+            threewire_write16(spipins, writeorder[regctr], regs[writeorder[regctr]]);
         }
         usleep(10);
 
         finish=0;
         if (program_options.dump)
         {
-            for (regctr=1; regctr < 18;regctr++)
+            for (regctr=1; regctr < NUM_REGS;regctr++)
             {
                 data=threewire_read16(spipins, regsnames[regctr].reg);
 
@@ -327,9 +450,8 @@ int main(int argc, char* argv[])
                 }
                 usleep(10);
             }
-        }      
+        }
     }
     threewire_close(spipins);
     return(0);
 }
-
