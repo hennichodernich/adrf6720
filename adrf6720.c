@@ -9,7 +9,7 @@
 #include "adrf6720.h"
 
 #define NUM_REGS 21
-#define WRITE_LENGTH 17
+#define WRITE_LENGTH 10
 
 typedef struct {
     int reset;
@@ -168,16 +168,9 @@ int main(int argc, char* argv[])
 
     uint8_t writeorder[WRITE_LENGTH] = {
         ADRF6720_ENABLES,
-        ADRF6720_SCAN,
         ADRF6720_CP_CTL,
         ADRF6720_PFD_CTL,
-        ADRF6720_BALUN_CTL,
-        ADRF6720_MOD_LIN_CTL,
-        ADRF6720_MOD_CTL0,
-        ADRF6720_MOD_CTL1,
         ADRF6720_PFD_CP_CTL,
-        ADRF6720_DITH_CTL1,
-        ADRF6720_DITH_CTL2,
         ADRF6720_VCO_CTL2,
         ADRF6720_VCO_CTL3,
         ADRF6720_VCO_CTL,
