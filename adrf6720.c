@@ -9,7 +9,7 @@
 #include "adrf6720.h"
 
 #define NUM_REGS 21
-#define WRITE_LENGTH 17
+#define WRITE_LENGTH 16
 
 typedef struct {
     int reset;
@@ -168,7 +168,6 @@ int main(int argc, char* argv[])
 
     uint8_t writeorder[WRITE_LENGTH] = {
         ADRF6720_ENABLES,
-        ADRF6720_SCAN,
         ADRF6720_CP_CTL,
         ADRF6720_PFD_CTL,
         ADRF6720_BALUN_CTL,
@@ -368,12 +367,18 @@ int main(int argc, char* argv[])
                                |(settings.DIV4_EN ? ADRF6720_FLAG_DIV4_EN : 0 )
                                | ADRF6720_BITS_VCO_SEL(settings.VCO_SEL);
 
+        regs[ADRF6720_PFD_CTL] =  ADRF6720_BITS_REF_MUX_SEL(settings.REF_MUX_SEL)
+                               | (settings.PFD_Polarity ? ADRF6720_FLAG_PFD_POLARITY : 0 )
+                               |  ADRF6720_BITS_REF_SEL(settings.REF_SEL);
+
+        settings.pll_ref_div = pow(2,(double)settings.REF_SEL-1.0);
+
         //settings.vco_freq = 2.0 * settings.lo_out_freq;
-        settings.pfd_freq = settings.pll_ref_in * settings.pll_ref_div;
+        settings.pfd_freq = settings.pll_ref_in / settings.pll_ref_div;
         settings.vco_freq = frac_divider * 2.0 * settings.pfd_freq;
         settings.lo_out_freq = settings.vco_freq / 2.0;         //because QUAD_DIV_EN==1
 
-        printf("f_VCO=%f, f_c=%f\n",settings.vco_freq, settings.lo_out_freq);
+        printf("f_PFD=%f, f_VCO=%f, f_c=%f\n", settings.pfd_freq, settings.vco_freq, settings.lo_out_freq);
 
         regs[ADRF6720_VCO_CTL3] = ADRF6720_BITS_VTUNE_DAC_SLOPE(settings.VTUNE_DAC_SLOPE)
                                 | ADRF6720_BITS_VTUNE_DAC_OFFSET(settings.VTUNE_DAC_OFFSET);
@@ -413,9 +418,7 @@ int main(int argc, char* argv[])
         regs[ADRF6720_CP_CTL] = ADRF6720_BITS_CP_CSCALE(((1 << settings.cscale_val) - 1))
                               | ADRF6720_BITS_CP_BLEED(settings.BLEED);
 
-        regs[ADRF6720_PFD_CTL] =  ADRF6720_BITS_REF_MUX_SEL(settings.REF_MUX_SEL)
-                               | (settings.PFD_Polarity ? ADRF6720_FLAG_PFD_POLARITY : 0 )
-                               |  ADRF6720_BITS_REF_SEL(settings.REF_SEL);
+
 
         regs[ADRF6720_BALUN_CTL] = ADRF6720_BITS_BAL_COUT(settings.BAL_COUT)
                                  | ADRF6720_BITS_BAL_CIN(settings.BAL_CIN);
