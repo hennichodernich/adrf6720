@@ -17,8 +17,15 @@
 #define ADRF6720_PFD_CP_CTL  0x40
 #define ADRF6720_DITH_CTL1   0x42
 #define ADRF6720_DITH_CTL2   0x43
+#define ADRF6720_CALIBRATION 0x44
 #define ADRF6720_VCO_CTL2    0x45
+#define ADRF6720_REG46       0x46
+#define ADRF6720_REG47       0x47
+#define ADRF6720_REG48       0x48
 #define ADRF6720_VCO_CTL3    0x49
+#define ADRF6720_SCAN        0x60
+#define ADRF6720_VERSION1    0xFE
+#define ADRF6720_VERSION2    0xFF
 
 //0x00 SOFT_RESET
 #define ADRF6720_FLAG_SOFT_RESET        0x0001
@@ -52,6 +59,7 @@
 //0x20 CP_CTL
 #define ADRF6720_FLAG_CP_SEL            0x4000
 #define ADRF6720_BITS_CP_CSCALE(n)      ((n & 0x0f) << 10)
+#define ADRF6720_BITS_CP_FSCALE(n)      ((n & 0x0f) << 6)
 #define ADRF6720_BITS_CP_BLEED(n)       (n & 0x3f)
 //0x21 PFD_CTL
 #define ADRF6720_BITS_REF_MUX_SEL(n)    ((n & 0x07) << 4)
@@ -87,7 +95,10 @@
 //0x42 DITH_CTL1
 #define ADRF6720_FLAG_DITH_EN           0x0008
 #define ADRF6720_BITS_DITH_MAG(n)       ((n & 0x03) << 1)
-#define ADRF6720_FLAG_DITH_VAL          0x0001
+#define ADRF6720_BITS_DITH_VAL16        0x0001
+//0x44 CALIBRATION
+#define ADRF6720_FLAG_SDM_DIVD_CLR      0x02
+#define ADRF6720_FLAG_BANDCAL		        0x01
 //0x45 VCO_CTL2
 #define ADRF6720_BITS_VTUNE_CTRL(n)     ((n & 0x03) << 8)
 #define ADRF6720_FLAG_VCO_BAND_SRC      0x0080
@@ -97,11 +108,70 @@
 #define ADRF6720_BITS_VTUNE_DAC_SLOPE(n) ((n & 0x1f) << 9)
 #define ADRF6720_BITS_SET_0(n)          (n & 0x001ff)
 #define ADRF6720_BITS_VTUNE_DAC_OFFSET(n) (n & 0x001ff)
+//0x60 UNDOCUMENTED
+#define ADRF6720_FLAG_SCAN_EN		0x01
 
 
 typedef struct{
     uint8_t reg;
     char *name;
 }t_regnamepair;
+
+typedef struct{
+  int LO_DRV1X_ENLO_DRV1X_EN;
+  int LO_DRV2X_EN;
+  int DIV_MODE;
+  int INT;
+  int FRAC;
+  int MOD;
+  int ENOP;
+  int CSCALE;
+  int BLEED;
+  int FSCALE;
+  int REF_MUX_SEL;
+  int PFD_Polarity;
+  int REF_SEL;
+  int VCO_SEL;
+  int LO_DRV_LVL;
+  int DRVDIV2_EN;
+  int DIV8_END;
+  int DIV4_EN;
+  int VCO_LDO_R2SEL;
+  int VCO_LDO_R4SEL;
+  int BAL_COUT;
+  int BAL_CIN;
+  int MOD_CDAC;
+  int MOD_RDAC;
+  int POLi;
+  int POLq;
+  int QLO;
+  int ILO;
+  int DCOFFI;
+  int DCOFFQ;
+  int CLKEDGE;
+  int CPCTRL;
+  int ABLDLY;
+  int DITH_EN;
+  int DITH_MAG;
+  int DITH_VAL;
+  int SDM_DIVD_CLR;
+  int BANDCAL;
+  int VTUNE_CTRL;
+  int VCO_BAND_SRC;
+  int BAND;
+  int VCO_BAND;
+  int VCO_CNTR_DONE;
+  int VTUNE_DAC_OFFSET;
+  int VTUNE_DAC_SLOPE;
+  int SCAN_EN;
+  double pll_ref_in;
+  double pll_ref_div;
+  double pfd_freq;
+  double lo_out_freq;
+  double vco_freq;
+  double lo_divide;
+  double prescaler;
+  double PLL_INT;      
+}t_adrf6720_settings;
 
 #endif // ADRF6720_H
