@@ -1,7 +1,7 @@
 CC      = gcc
-CFLAGS  = -Wall
+CFLAGS  = -Wall -I/usr/include/libftdi1
 LDFLAGS = -lm -lwiringPi
-FTDI_LDFLAGS = -lm -lftdi
+FTDI_LDFLAGS = -lm -lftdi1
 DUMMY_LDFLAGS = -lm
 
 all: adrf6720 write_reg
