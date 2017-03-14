@@ -8,7 +8,7 @@
 #include "threewire.h"
 #include "adrf6720.h"
 
-#define NUM_REGS 21
+#define NUM_REGS 22
 #define WRITE_LENGTH 17
 
 typedef struct {
@@ -154,6 +154,7 @@ int main(int argc, char* argv[])
         {ADRF6720_PFD_CP_CTL, "PFD_CP_CTL"},
         {ADRF6720_DITH_CTL1,  "DITH_CTL1"},
         {ADRF6720_DITH_CTL2,  "DITH_CTL2"},
+	{ADRF6720_CALIBRATION,"CALIBRATION"},
         {ADRF6720_VCO_CTL2,   "VCO_CTL2"},
         {ADRF6720_VCO_CTL3,   "VCO_CTL3"},
         {ADRF6720_SCAN,       "SCAN"},
