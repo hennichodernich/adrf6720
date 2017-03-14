@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
         ADRF6720_PFD_CP_CTL,
 	      ADRF6720_DITH_CTL1,
 	      ADRF6720_DITH_CTL2,
-        ADRF6720_CALIBRATION
+        ADRF6720_CALIBRATION,
         ADRF6720_VCO_CTL2,
         ADRF6720_PFD_CTL,
         ADRF6720_VCO_CTL,
@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
     //reg 0x04
     settings.MOD=1536;
     //reg 0x20
-    settings.cscale_val=1;
+    settings.cscale_val=2;
     settings.BLEED=38;
     settings.FSCALE=0;
     //reg 0x21
@@ -225,8 +225,8 @@ int main(int argc, char* argv[])
     settings.DCOFFI=0;
     settings.DCOFFQ=0;
     //reg 0x40
-    settings.CLKEDGE=2;
-    settings.CPCTRL=0;
+    settings.CLKEDGE=0;
+    settings.CPCTRL=4;
     settings.ABLDLY=0;
     //reg 0x42,0x43
     settings.DITH_EN=1;
@@ -444,7 +444,6 @@ int main(int argc, char* argv[])
 
         for (regctr=0; regctr < WRITE_LENGTH;regctr++)
         {
-	    printf("writing %02x:\t%04x\n", writeorder[regctr], regs[writeorder[regctr]]);
             threewire_write16(spipins, writeorder[regctr], regs[writeorder[regctr]]);
         }
         usleep(10);
