@@ -217,8 +217,8 @@ int main(int argc, char* argv[])
     settings.MOD_CDAC=1;
     settings.MOD_RDAC=68;
     //reg 0x32
-    settings.POLi=2;
-    settings.POLq=1;
+    settings.POLq=2;
+    settings.POLi=1;
     settings.QLO=0;
     settings.ILO=0;
     //reg 0x33
