@@ -222,8 +222,8 @@ int main(int argc, char* argv[])
     settings.QLO=0;
     settings.ILO=0;
     //reg 0x33
-    settings.DCOFFI=0;
-    settings.DCOFFQ=0;
+    settings.DCOFFI=68;
+    settings.DCOFFQ=182;
     //reg 0x40
     settings.CLKEDGE=0;
     settings.CPCTRL=4;
