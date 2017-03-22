@@ -17,6 +17,6 @@
 
 #endif
 
-#define FTDI_INTERFACE INTERFACE_A
+#define FTDI_INTERFACE INTERFACE_B
 
 #endif // CONFIG_FTDI_H

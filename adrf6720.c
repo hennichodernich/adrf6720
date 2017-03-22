@@ -254,9 +254,9 @@ int main(int argc, char* argv[])
         return(-2);
     }
 
-    if ((settings.DIV_MODE==0) && ((settings.FRAC==0) || (settings.MOD==0)))
+    if ((settings.DIV_MODE==0) && (settings.MOD==0))
     {
-        fprintf(stderr, "If one of --frac or --mod is given, the other one must be given as well for fractional mode.\n");
+        fprintf(stderr, "If --frac is given, --mod must be given as well for fractional mode.\n");
         return(-1);
     }
     if ((settings.INT<1)||(settings.INT>2047))
@@ -264,9 +264,9 @@ int main(int argc, char* argv[])
         fprintf(stderr, "--int must lie between 1 and 2047.\n");
         return(-1);
     }
-    if ((settings.DIV_MODE==0) && ((settings.FRAC<1)||(settings.FRAC>65535)||(settings.MOD<1)||(settings.MOD>65535)))
+    if ((settings.DIV_MODE==0) && ((settings.FRAC<0)||(settings.FRAC>65535)||(settings.MOD<1)||(settings.MOD>65535)))
     {
-        fprintf(stderr, "--frac and --mod must lie between 1 and 65536.\n");
+        fprintf(stderr, "--mod must lie between 1 and 65534, --frac between 0 and 65535.\n");
         return(-1);
     }
     if ((settings.REF_SEL<0)||(settings.REF_SEL>4))
