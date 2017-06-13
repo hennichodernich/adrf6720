@@ -10,16 +10,19 @@
 #define ADRF6720_CP_CTL      0x20
 #define ADRF6720_PFD_CTL     0x21
 #define ADRF6720_VCO_CTL     0x22
+#define ADRF6720_DGA_CTL     0x23 //ADRF6820 only
 #define ADRF6720_BALUN_CTL   0x30
+#define ADRF6720_MIXER_CTL   0x31
 #define ADRF6720_MOD_LIN_CTL 0x31
 #define ADRF6720_MOD_CTL0    0x32
 #define ADRF6720_MOD_CTL1    0x33
+#define ADRF6720_MOD_CTL2    0x34 //ADRF6820 only
 #define ADRF6720_PFD_CP_CTL  0x40
 #define ADRF6720_DITH_CTL1   0x42
 #define ADRF6720_DITH_CTL2   0x43
 #define ADRF6720_CALIBRATION 0x44
 #define ADRF6720_VCO_CTL2    0x45
-#define ADRF6720_REG46       0x46
+#define ADRF6720_VCO_RB      0x46 //ADRF6820 only
 #define ADRF6720_REG47       0x47
 #define ADRF6720_REG48       0x48
 #define ADRF6720_VCO_CTL3    0x49
@@ -73,9 +76,17 @@
 #define ADRF6720_FLAG_DIV8_EN           0x0010
 #define ADRF6720_FLAG_DIV4_EN           0x0008
 #define ADRF6720_BITS_VCO_SEL(n)        (n & 0x07)
+//0x23 DGA_CTL
+#define ADRF6720_FLAG_RFSW_MUX          0x0800
+#define ADRF6720_FLAG_RFSW_SEL          0x0200
+#define ADRF6720_BITS_RFDSA_SEL(n)      ((n & 0x0f) << 5)
 //0x30 BALUN_CTL
 #define ADRF6720_BITS_BAL_COUT(n)       ((n & 0x0f) << 4)
 #define ADRF6720_BITS_BAL_CIN(n)        (n & 0x0f)
+//0x31 MIXER_CTL
+#define ADRF6720_BITS_MIX_BIAS(n)       ((n & 0x07) << 10)
+#define ADRF6720_BITS_DEMOD_RDAC(n)     ((n & 0x0f) << 5)
+#define ADRF6720_BITS_DEMOD_CDAC(n)     (n & 0x0f)
 //0x31 MOD_LIN_CTL
 #define ADRF6720_BITS_MOD_RSEL(n)       ((n & 0x7f) << 6)
 #define ADRF6720_BITS_MOD_CSEL(n)       (n & 0x3f)
@@ -88,6 +99,9 @@
 //0x33 MOD_CTL1
 #define ADRF6720_BITS_DCOFF_I(n)        ((n & 0xff) << 8)
 #define ADRF6720_BITS_DCOFF_Q(n)        (n & 0xff)
+//0x34 MOD_CTL2
+#define ADRF6720_BITS_BB_BIAS(n)        ((n & 0x03) << 10)
+#define ADRF6720_BITS_BWSEL(n)          ((n & 0x03) << 8)
 //0x40 PFD_CP_CTL
 #define ADRF6720_BITS_ABLDLY(n)         ((n & 0x03) << 5)
 #define ADRF6720_BITS_CP_CTRL(n)        ((n & 0x07) << 2)
@@ -103,6 +117,8 @@
 #define ADRF6720_BITS_VTUNE_CTRL(n)     ((n & 0x03) << 8)
 #define ADRF6720_FLAG_VCO_BAND_SRC      0x0080
 #define ADRF6720_BITS_BAND(n)           (n & 0x7f)
+//0x46 VCO_RB
+#define ADRF6720_VCO_BAND(n)            (n & 0x3f)
 //0x49 VCO_CTL3
 #define ADRF6720_BITS_SET_1(n)          ((n & 0x1f) << 9)
 #define ADRF6720_BITS_VTUNE_DAC_SLOPE(n) ((n & 0x1f) << 9)
@@ -138,16 +154,22 @@ typedef struct{
   int DIV4_EN;
   int VCO_LDO_R2SEL;
   int VCO_LDO_R4SEL;
+  int RFSW_MUX;
+  int RFSW_SEL;
+  int RFDSA_SEL;
+  int MIX_BIAS;
   int BAL_COUT;
   int BAL_CIN;
-  int MOD_CDAC;
-  int MOD_RDAC;
+  int MOD_CSEL;
+  int MOD_RSEL;
   int POLi;
   int POLq;
   int QLO;
   int ILO;
   int DCOFFI;
   int DCOFFQ;
+  int BB_BIAS;
+  int BWSEL;
   int CLKEDGE;
   int CPCTRL;
   int ABLDLY;
@@ -168,7 +190,7 @@ typedef struct{
   double pll_ref_div;
   double pfd_freq;
   double lo_out_freq;
-  double vco_freq;  
+  double vco_freq;
 }t_adrf6720_settings;
 
 #endif // ADRF6720_H
