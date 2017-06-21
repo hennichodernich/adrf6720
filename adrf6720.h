@@ -150,6 +150,7 @@ typedef struct{
   int VCO_SEL;
   int LO_DRV_LVL;
   int DRVDIV2_EN;
+  int lo_divider;
   int DIV8_EN;
   int DIV4_EN;
   int VCO_LDO_R2SEL;

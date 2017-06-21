@@ -33,6 +33,8 @@ static void print_usage(const char *prog)
     puts("  -i --int      integer part of divider (int). Default 75.\n"
          "  -f --frac     fractional part of divider, numerator (int). Default 0.\n"
          "  -m --mod      fractional part of divider, denominator (int). Default n/a (integer mode).\n"
+         "  -h --divider  LO divider (int). Allowed values: 1,2,4. Default 1.\n"
+         "  -v --vco      VCO selector (int). Allowed values: 0,1,2,3. Default 0.\n"
          "  -s --refsel   clock reference selector (int). Default 1 (x1).\n"
          "  -c --cscale   charge pump coarse scale current. Default ? (?uA).\n"
          "  -b --bleed    charge pump bleed current. Default ?? (?uA).\n"
@@ -54,6 +56,8 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         { "int",      1, 0, 'i' },
         { "frac",     1, 0, 'f' },
         { "mod",      1, 0, 'm' },
+        { "divider",  1, 0, 'h' },
+        { "vco",      1, 0, 'v' },
         { "refsel",   1, 0, 's' },
         { "cscale",   1, 0, 'c' },
         { "bleed",    1, 0, 'b' },
@@ -73,7 +77,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:s:c:b:k:rdnoR", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:h:v:s:c:b:k:rdnoR", lopts, NULL);
 
         if (c == -1)
             break;
@@ -89,6 +93,12 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         case 'm':
             (*settings).MOD=atoi(optarg);
             (*settings).DIV_MODE=0;
+            break;
+        case 'h':
+            (*settings).lo_divider=atoi(optarg);
+            break;
+        case 'v':
+            (*settings).VCO_SEL=atoi(optarg);
             break;
         case 's':
             (*settings).REF_SEL=atoi(optarg);
@@ -242,6 +252,7 @@ int main(int argc, char* argv[])
     settings.VCO_SEL=0;
     settings.LO_DRV_LVL=0;  //1x internal LO mode
     settings.DRVDIV2_EN=0;  //1x internal LO mode
+    settings.lo_divider=1;
     settings.DIV8_EN=0;
     settings.DIV4_EN=0;
     settings.VCO_LDO_R2SEL=10;
@@ -323,6 +334,31 @@ int main(int argc, char* argv[])
         fprintf(stderr, "--frac and --mod must lie between 1 and 65536.\n");
         return(-1);
     }
+
+    if ((settings.lo_divider!=1) && (settings.lo_divider!=2) && (settings.lo_divider!=4))
+    {
+	fprintf(stderr, "--divider must be one of 1, 2 or 4.\n");
+	return(-1);
+    }
+    else
+    {
+
+    	if (settings.lo_divider > 1)
+	{
+		settings.DIV4_EN = 1;
+	}
+	if (settings.lo_divider == 4)
+	{
+		settings.DIV8_EN = 1;
+	}
+    }
+
+    if ((settings.VCO_SEL<0)||(settings.VCO_SEL>3))
+    {
+        fprintf(stderr, "--vco must lie between 0 and 3.\n");
+        return(-1);
+    }
+
     if ((settings.REF_SEL<0)||(settings.REF_SEL>4))
     {
         fprintf(stderr, "--refsel must lie between 0 and 4.\n");
@@ -418,9 +454,6 @@ int main(int argc, char* argv[])
 
         //hardcoded for carrier frequency
 
-        settings.DIV4_EN = 0;
-        settings.DIV8_EN = 0;
-        settings.VCO_SEL = 0;
         regs[ADRF6720_VCO_CTL] = ADRF6720_BITS_VCO_LDO_R4SEL(settings.VCO_LDO_R4SEL)
                                | ADRF6720_BITS_VCO_LDO_R2SEL(settings.VCO_LDO_R2SEL)
                                | ADRF6720_BITS_LO_DRV_LVL(settings.LO_DRV_LVL)
@@ -439,10 +472,9 @@ int main(int argc, char* argv[])
 
         settings.pll_ref_div = pow(2,(double)settings.REF_SEL-1.0);
 
-        //settings.vco_freq = 2.0 * settings.lo_out_freq;
         settings.pfd_freq = settings.pll_ref_in / settings.pll_ref_div;
         settings.vco_freq = frac_divider * 2.0 * settings.pfd_freq;
-        settings.lo_out_freq = settings.vco_freq / 2.0;         //because QUAD_DIV_EN==1
+        settings.lo_out_freq = settings.vco_freq / (2.0 * settings.lo_divider);         //because QUAD_DIV_EN==1
 
         printf("f_PFD=%f, f_VCO=%f, f_c=%f\n", settings.pfd_freq, settings.vco_freq, settings.lo_out_freq);
 
