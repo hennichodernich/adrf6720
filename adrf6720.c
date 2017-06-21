@@ -65,6 +65,14 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         { "cpctrl",   1, 0, 'l' },
         { "clkedge",  1, 0, 'e' },
         { "refclk",   1, 0, 'k' },
+        { "balcin",   1, 0, 'x' },
+        { "balcout",  1, 0, 'y' },
+        { "mixbias",  1, 0, 'z' },
+        { "bbbias",   1, 0, 'w' },
+        { "rdac",     1, 0, 'q' },
+        { "cdac",     1, 0, 'u' },
+        { "attenuation", 1, 0, 't' },
+        { "input",    1, 0, 'j' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
         { "nothing",  0, 0, 'n' },
@@ -77,7 +85,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:h:v:s:c:b:k:rdnoR", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:h:v:s:c:b:k:x:y:z:w:q:u:t:j:rdnoR", lopts, NULL);
 
         if (c == -1)
             break;
@@ -120,6 +128,30 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
             break;
         case 'k':
             (*settings).pll_ref_in=atof(optarg);
+            break;
+	case 'x':
+	    (*settings).BAL_CIN=atoi(optarg);
+	    break;
+	case 'y':
+	    (*settings).BAL_COUT=atoi(optarg);
+	    break;
+	case 'z':
+            (*settings).MIX_BIAS=atoi(optarg);
+            break;
+	case 'w':
+            (*settings).BB_BIAS=atoi(optarg);
+            break;
+	case 'q':
+            (*settings).DEMOD_RDAC=atoi(optarg);
+            break;
+	case 'u':
+            (*settings).DEMOD_CDAC=atoi(optarg);
+            break;
+	case 't':
+            (*settings).RFDSA_SEL=atoi(optarg);
+            break;
+	case 'j':
+            (*settings).RFSW_SEL=atoi(optarg);
             break;
         case 'r':
             (*opt_struct).reset=1;
@@ -258,15 +290,18 @@ int main(int argc, char* argv[])
     settings.VCO_LDO_R2SEL=10;
     settings.VCO_LDO_R4SEL=2;
     //reg 0x23
-    settings.RFSW_MUX=0;
+    settings.RFSW_MUX=1;
     settings.RFSW_SEL=0;
     settings.RFDSA_SEL=0;
     //reg 0x30
     settings.BAL_COUT=0;
     settings.BAL_CIN=0;
     //reg 0x31
-    settings.MOD_CSEL=1;
-    settings.MOD_RSEL=68;   //MIX_BIAS=4 and DEMOD_RDAC=4
+    settings.MIX_BIAS=4;
+    settings.DEMOD_RDAC=4;
+    settings.DEMOD_CDAC=1;
+    settings.MOD_RSEL=(settings.MIX_BIAS << 4) | settings.DEMOD_RDAC;   //MIX_BIAS=4 and DEMOD_RDAC=4
+    settings.MOD_CSEL=settings.DEMOD_CDAC;
     //reg 0x32
     settings.POLq=2;
     settings.POLi=1;
@@ -277,7 +312,7 @@ int main(int argc, char* argv[])
     settings.DCOFFQ=0;
     //ref 0x34
     settings.BB_BIAS=2;
-    settings.BWSEL=3;
+    settings.BWSEL=0;
     //reg 0x40
     settings.CLKEDGE=0;
     settings.CPCTRL=4;

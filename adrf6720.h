@@ -158,11 +158,13 @@ typedef struct{
   int RFSW_MUX;
   int RFSW_SEL;
   int RFDSA_SEL;
-  int MIX_BIAS;
   int BAL_COUT;
   int BAL_CIN;
   int MOD_CSEL;
   int MOD_RSEL;
+  int MIX_BIAS;
+  int DEMOD_CDAC;
+  int DEMOD_RDAC;
   int POLi;
   int POLq;
   int QLO;
