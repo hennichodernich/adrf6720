@@ -336,16 +336,6 @@ int main(int argc, char* argv[])
     settings.pll_ref_div=1.0;
     settings.lo_out_freq=2440.0;
 
-    if (program_options.receiver==1)
-    {
-      write_length = WRITE_LENGTH_RX;
-      writeorder = writeorder_rx;
-    }
-    else
-    {
-      write_length = WRITE_LENGTH_TX;
-      writeorder = writeorder_tx;
-    }
 
     retval = parse_opts(argc, argv, &program_options, &settings);
     if (retval==-1)
@@ -423,6 +413,17 @@ int main(int argc, char* argv[])
     {
         fprintf(stderr, "--clkedge must lie between 0 and 3.\n");
         return(-1);
+    }
+
+    if (program_options.receiver==1)
+    {
+      write_length = WRITE_LENGTH_RX;
+      writeorder = writeorder_rx;
+    }
+    else
+    {
+      write_length = WRITE_LENGTH_TX;
+      writeorder = writeorder_tx;
     }
 
     signal(SIGINT, INTHandler);
@@ -574,6 +575,9 @@ int main(int argc, char* argv[])
 
         for (regctr=0; regctr < write_length;regctr++)
         {
+#if 0
+	    printf("writing %x=%x\n", writeorder[regctr], regs[writeorder[regctr]]);
+#endif
             threewire_write16(spipins, writeorder[regctr], regs[writeorder[regctr]]);
         }
         usleep(10);
