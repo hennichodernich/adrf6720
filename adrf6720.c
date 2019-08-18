@@ -18,6 +18,8 @@ typedef struct {
     int poweroff;
     int nothing;
     int receiver;
+    int autotune;
+    int optimize;
 } t_opt_struct;
 
 
@@ -36,11 +38,6 @@ static void print_usage(const char *prog)
          "  -h --divider  LO divider (int). Allowed values: 1,2,4. Default 1.\n"
          "  -v --vco      VCO selector (int). Allowed values: 0,1,2,3. Default 0.\n"
          "  -s --refsel   clock reference selector (int). Default 1 (x1).\n"
-         "  -c --cscale   charge pump coarse scale current. Default ? (?uA).\n"
-         "  -b --bleed    charge pump bleed current. Default ?? (?uA).\n"
-         "  -a --abldly   anti-backlash delay. Default 0.\n"
-         "  -l --cpctrl   charge pump control. Default ? (both on).\n"
-         "  -e --clkedge  PFD clock edge. Default ? (both down).\n"
          "  -k --refclk   reference clock in MHz. Default 40MHz.\n"
 	 "  -x --balcin   default 0\n"
 	 "  -y --balcout  default 0\n"
@@ -48,12 +45,14 @@ static void print_usage(const char *prog)
 	 "  -w --bbbias   default 2\n"
 	 "  -q --rdac     default 4\n"
 	 "  -u --cdac     default 1\n"
-	 "  -t --attenuation attenuation in dB, range 0 to 15, default 0.\n"
+	 "  -a --attenuation attenuation in dB, range 0 to 15, default 0.\n"
+	 "  -t --tune     tune to given frequency in MHz\n"
+	 "  -o --optimize optimize parameters for selected frequency\n"
 	 "  -j --input    0 or 1, default 0\n"
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
          "  -n --nothing  do nothing (useful for plain reset or dump)\n"
-         "  -o --poweroff power off chip\n"
+         "  -p --poweroff power off chip\n"
          "  -R --receiver chip is receiver ADRF6820\n");
 }
 
@@ -67,11 +66,6 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         { "divider",  1, 0, 'h' },
         { "vco",      1, 0, 'v' },
         { "refsel",   1, 0, 's' },
-        { "cscale",   1, 0, 'c' },
-        { "bleed",    1, 0, 'b' },
-        { "abldly",   1, 0, 'a' },
-        { "cpctrl",   1, 0, 'l' },
-        { "clkedge",  1, 0, 'e' },
         { "refclk",   1, 0, 'k' },
         { "balcin",   1, 0, 'x' },
         { "balcout",  1, 0, 'y' },
@@ -79,12 +73,14 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         { "bbbias",   1, 0, 'w' },
         { "rdac",     1, 0, 'q' },
         { "cdac",     1, 0, 'u' },
-        { "attenuation", 1, 0, 't' },
+        { "attenuation", 1, 0, 'a' },
         { "input",    1, 0, 'j' },
+        { "tune",     1, 0, 't' },
+        { "optimize", 0, 0, 'o' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
         { "nothing",  0, 0, 'n' },
-        { "poweroff", 0, 0, 'o' },
+        { "poweroff", 0, 0, 'p' },
         { "receiver", 0, 0, 'R' },
         { NULL, 0, 0, 0 },
     };
@@ -93,7 +89,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:h:v:s:c:b:k:x:y:z:w:q:u:t:j:rdnoR", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:h:v:s:k:x:y:z:w:q:u:a:j:t:ordnpR", lopts, NULL);
 
         if (c == -1)
             break;
@@ -119,21 +115,6 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         case 's':
             (*settings).REF_SEL=atoi(optarg);
             break;
-        case 'c':
-            (*settings).cscale_val=atoi(optarg);
-            break;
-        case 'b':
-            (*settings).BLEED=atoi(optarg);
-            break;
-        case 'a':
-            (*settings).ABLDLY=atoi(optarg);
-            break;
-        case 'l':
-            (*settings).CPCTRL=atoi(optarg);
-            break;
-        case 'e':
-            (*settings).CLKEDGE=atoi(optarg);
-            break;
         case 'k':
             (*settings).pll_ref_in=atof(optarg);
             break;
@@ -155,11 +136,18 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 	case 'u':
             (*settings).DEMOD_CDAC=atoi(optarg);
             break;
-	case 't':
+	case 'a':
             (*settings).RFDSA_SEL=atoi(optarg);
             break;
 	case 'j':
             (*settings).RFSW_SEL=atoi(optarg);
+            break;
+	case 't':
+            (*settings).tune_freq=atof(optarg);
+	    (*opt_struct).autotune = 1;
+            break;
+        case 'o':
+            (*opt_struct).optimize=1;
             break;
         case 'r':
             (*opt_struct).reset=1;
@@ -170,7 +158,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         case 'n':
             (*opt_struct).nothing=1;
             break;
-        case 'o':
+        case 'p':
             (*opt_struct).poweroff=1;
             break;
         case 'R':
@@ -182,6 +170,14 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         }
     }
     return(0);
+}
+
+void do_tuning(t_adrf6720_settings *settings)
+{
+}
+
+void optimize(t_adrf6720_settings *settings)
+{
 }
 
 int main(int argc, char* argv[])
@@ -272,6 +268,8 @@ int main(int argc, char* argv[])
     program_options.poweroff=0;
     program_options.nothing=0;
     program_options.receiver=0;
+    program_options.autotune=0;
+    program_options.optimize=0;
 
     //reg 0x02
     settings.DIV_MODE=1;
@@ -343,6 +341,7 @@ int main(int argc, char* argv[])
     settings.pll_ref_in=40.0;
     settings.pll_ref_div=1.0;
     settings.lo_out_freq=2440.0;
+    settings.tune_freq=0;
 
 
     retval = parse_opts(argc, argv, &program_options, &settings);
@@ -463,6 +462,13 @@ int main(int argc, char* argv[])
         return(-1);
     }
 
+    if (program_options.autotune==1)
+	    if ((settings.tune_freq < 356.25) || (settings.tune_freq>2850))
+	    {
+	        fprintf(stderr, "--tune must lie between 326.25 and 2850.\n");
+        	return(-1);
+	    }
+
     if (program_options.receiver==1)
     {
       write_length = WRITE_LENGTH_RX;
@@ -519,6 +525,13 @@ int main(int argc, char* argv[])
     }
     else
     {
+	if (program_options.autotune)
+		do_tuning(&settings);
+
+	if (program_options.optimize)
+		optimize(&settings);
+
+
         if(settings.DIV_MODE==0)  //fractional mode
         {
             printf("setting up fractional mode with divider %d %d/%d\n",settings.INT,settings.FRAC,settings.MOD);

@@ -194,6 +194,7 @@ typedef struct{
   double pfd_freq;
   double lo_out_freq;
   double vco_freq;
+  double tune_freq;
 }t_adrf6720_settings;
 
 #endif // ADRF6720_H
