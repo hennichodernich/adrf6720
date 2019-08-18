@@ -41,7 +41,15 @@ static void print_usage(const char *prog)
          "  -a --abldly   anti-backlash delay. Default 0.\n"
          "  -l --cpctrl   charge pump control. Default ? (both on).\n"
          "  -e --clkedge  PFD clock edge. Default ? (both down).\n"
-         "  -k --refclk   reference clock in MHz. Default 32MHz.\n"
+         "  -k --refclk   reference clock in MHz. Default 40MHz.\n"
+	 "  -x --balcin   default 0\n"
+	 "  -y --balcout  default 0\n"
+	 "  -z --mixbias  default 4\n"
+	 "  -w --bbbias   default 2\n"
+	 "  -q --rdac     default 4\n"
+	 "  -u --cdac     default 1\n"
+	 "  -t --attenuation attenuation in dB, range 0 to 15, default 0.\n"
+	 "  -j --input    0 or 1, default 0\n"
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
          "  -n --nothing  do nothing (useful for plain reset or dump)\n"
@@ -290,7 +298,7 @@ int main(int argc, char* argv[])
     settings.VCO_LDO_R2SEL=10;
     settings.VCO_LDO_R4SEL=2;
     //reg 0x23
-    settings.RFSW_MUX=1;
+    settings.RFSW_MUX=0; //0=software control 1=hardware control
     settings.RFSW_SEL=0;
     settings.RFDSA_SEL=0;
     //reg 0x30
@@ -332,7 +340,7 @@ int main(int argc, char* argv[])
     settings.VTUNE_DAC_OFFSET=0;
     settings.VTUNE_DAC_SLOPE=0;
 
-    settings.pll_ref_in=32.0;
+    settings.pll_ref_in=40.0;
     settings.pll_ref_div=1.0;
     settings.lo_out_freq=2440.0;
 
@@ -414,6 +422,48 @@ int main(int argc, char* argv[])
         fprintf(stderr, "--clkedge must lie between 0 and 3.\n");
         return(-1);
     }
+    if ((settings.BAL_CIN<0)||(settings.BAL_CIN>7))
+    {
+        fprintf(stderr, "--balcin must lie between 0 and 7.\n");
+        return(-1);
+    }
+    if ((settings.BAL_COUT<0)||(settings.BAL_COUT>7))
+    {
+        fprintf(stderr, "--balcout must lie between 0 and 7.\n");
+        return(-1);
+    }
+    if ((settings.MIX_BIAS<0)||(settings.MIX_BIAS>7))
+    {
+        fprintf(stderr, "--mixbias must lie between 0 and 7.\n");
+        return(-1);
+    }
+    if ((settings.BB_BIAS<0)||(settings.BB_BIAS>3))
+    {
+        fprintf(stderr, "--bbbias must lie between 0 and 3.\n");
+        return(-1);
+    }
+    if ((settings.DEMOD_RDAC<0)||(settings.DEMOD_RDAC>7))
+    {
+        fprintf(stderr, "--rdac must lie between 0 and 7.\n");
+        return(-1);
+    }
+    if ((settings.DEMOD_CDAC<0)||(settings.DEMOD_CDAC>15))
+    {
+        fprintf(stderr, "--cdac must lie between 0 and 15.\n");
+        return(-1);
+    }
+    if ((settings.RFDSA_SEL<0)||(settings.RFDSA_SEL>15))
+    {
+        fprintf(stderr, "--attenuation must lie between 0 and 15.\n");
+        return(-1);
+    }
+    if ((settings.RFSW_SEL<0)||(settings.RFSW_SEL>1))
+    {
+        fprintf(stderr, "--input must lie between 0 and 1.\n");
+        return(-1);
+    }
+            settings.RFDSA_SEL
+            settings.RFSW_SEL
 
     if (program_options.receiver==1)
     {
