@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <math.h>
 #include "threewire.h"
+#include "frap.h"
 #include "adrf6720.h"
 
 #define NUM_REGS 25
@@ -174,10 +175,173 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 
 void do_tuning(t_adrf6720_settings *settings)
 {
+	double ideal_divider;
+
+        settings->pll_ref_div = pow(2,(double)settings->REF_SEL-1.0);
+        settings->pfd_freq = settings->pll_ref_in / settings->pll_ref_div;
+
+
+	if (settings->tune_freq >= 1425)
+	{
+		settings->lo_divider = 1;
+		settings->DIV8_EN = 0;
+		settings->DIV4_EN = 0;
+	}
+	else if (settings->tune_freq >= 712.5)
+	{
+		settings->lo_divider = 2;
+		settings->DIV8_EN = 0;
+		settings->DIV4_EN = 1;
+	}
+	else
+	{
+		settings->lo_divider = 4;
+		settings->DIV8_EN = 1;
+		settings->DIV4_EN = 1;
+	}
+
+        settings->vco_freq = settings->tune_freq * (2.0 * settings->lo_divider);         //because QUAD_DIV_EN==1
+
+	if ((settings->vco_freq < 2850) || (settings->vco_freq > 5700))
+	{
+		fprintf(stderr,"VCO frequency is out of range\n");
+		exit(-1);
+	}
+
+	if (settings->vco_freq >= 4600)
+		settings->VCO_SEL = 0;
+	else if (settings->vco_freq >= 4020)
+		settings->VCO_SEL = 1;
+	else if (settings->vco_freq >= 3500)
+		settings->VCO_SEL = 2;
+	else
+		settings->VCO_SEL = 3;
+
+	ideal_divider = settings->vco_freq / (2.0 * settings->pfd_freq);
+
+	settings->DIV_MODE=0;
+        settings->INT = (int)floor(ideal_divider);
+        frap(fmod(ideal_divider,1.0),2047,&(settings->FRAC),&(settings->MOD));
+        if (settings->FRAC==0)
+        {
+        	settings->DIV_MODE=1;
+        }
+
+
+//        printf("f_PFD=%f, f_VCO=%f, f_c=%f\n", settings->pfd_freq, settings->vco_freq, settings->lo_out_freq);
 }
 
 void optimize(t_adrf6720_settings *settings)
 {
+	//values for BWSEL=0
+
+	if (settings->tune_freq >= 1500)
+		settings->BAL_CIN = 1;
+	else if (settings->tune_freq >= 1300)
+		settings->BAL_CIN = 2;
+	else if (settings->tune_freq >= 1100)
+		settings->BAL_CIN = 3;
+	else if (settings->tune_freq >= 1000)
+		settings->BAL_CIN = 5;
+	else if (settings->tune_freq >= 900)
+		settings->BAL_CIN = 6;
+	else 
+		settings->BAL_CIN = 7;
+
+
+	if (settings->tune_freq >= 1900)
+		settings->BAL_COUT = 0;
+	else if (settings->tune_freq >= 1800)
+		settings->BAL_COUT = 1;
+	else if (settings->tune_freq >= 1700)
+		settings->BAL_COUT = 0;
+	else if (settings->tune_freq >= 1200)
+		settings->BAL_COUT = 1;
+	else if (settings->tune_freq >= 1100)
+		settings->BAL_COUT = 2;
+	else if (settings->tune_freq >= 1000)
+		settings->BAL_COUT = 1;
+	else if (settings->tune_freq >= 900)
+		settings->BAL_COUT = 2;
+	else if (settings->tune_freq >= 800)
+		settings->BAL_COUT = 3;
+	else 
+		settings->BAL_COUT = 7;
+
+
+	if (settings->tune_freq >= 2700)
+		settings->MIX_BIAS = 1;
+	else if (settings->tune_freq >= 2000)
+		settings->MIX_BIAS = 2;
+	else if (settings->tune_freq >= 1600)
+		settings->MIX_BIAS = 1;
+	else if (settings->tune_freq >= 1300)
+		settings->MIX_BIAS = 2;
+	else if (settings->tune_freq >= 900)
+		settings->MIX_BIAS = 1;
+	else
+		settings->MIX_BIAS = 2;
+
+	if (settings->tune_freq >= 2700)
+		settings->DEMOD_RDAC = 8;
+	else if (settings->tune_freq >= 2400)
+		settings->DEMOD_RDAC = 7;
+	else if (settings->tune_freq >= 2200)
+		settings->DEMOD_RDAC = 9;
+	else if (settings->tune_freq >= 1600)
+		settings->DEMOD_RDAC = 8;
+	else if (settings->tune_freq >= 1400)
+		settings->DEMOD_RDAC = 9;
+	else if (settings->tune_freq >= 1200)
+		settings->DEMOD_RDAC = 8;
+	else if (settings->tune_freq >= 1100)
+		settings->DEMOD_RDAC = 9;
+	else if (settings->tune_freq >= 900)
+		settings->DEMOD_RDAC = 8;
+	else if (settings->tune_freq >= 800)
+		settings->DEMOD_RDAC = 9;
+	else if (settings->tune_freq >= 700)
+		settings->DEMOD_RDAC = 8;
+	else
+		settings->DEMOD_RDAC = 9;
+
+
+	if (settings->tune_freq >= 2700)
+		settings->DEMOD_CDAC = 4;
+	else if (settings->tune_freq >= 2300)
+		settings->DEMOD_CDAC = 3;
+	else if (settings->tune_freq >= 2200)
+		settings->DEMOD_CDAC = 2;
+	else if (settings->tune_freq >= 2000)
+		settings->DEMOD_CDAC = 4;
+	else if (settings->tune_freq >= 1900)
+		settings->DEMOD_CDAC = 5;
+	else if (settings->tune_freq >= 1800)
+		settings->DEMOD_CDAC = 6;
+	else if (settings->tune_freq >= 1600)
+		settings->DEMOD_CDAC = 5;
+	else if (settings->tune_freq >= 1500)
+		settings->DEMOD_CDAC = 4;
+	else if (settings->tune_freq >= 1400)
+		settings->DEMOD_CDAC = 3;
+	else if (settings->tune_freq >= 1300)
+		settings->DEMOD_CDAC = 7;
+	else if (settings->tune_freq >= 1200)
+		settings->DEMOD_CDAC = 8;
+	else if (settings->tune_freq >= 1100)
+		settings->DEMOD_CDAC = 6;
+	else if (settings->tune_freq >= 1000)
+		settings->DEMOD_CDAC = 9;
+	else if (settings->tune_freq >= 900)
+		settings->DEMOD_CDAC = 7;
+	else if (settings->tune_freq >= 800)
+		settings->DEMOD_CDAC = 4;
+	else if (settings->tune_freq >= 700)
+		settings->DEMOD_CDAC = 11;
+	else
+		settings->DEMOD_CDAC = 10;
+
+	printf("choosing BAL_CIN=%d, BAL_COUT=%d, MIX_BIAS=%d, DEMOD_RDAC=%d, DEMOD_CDAC=%d\n",settings->BAL_CIN, settings->BAL_COUT, settings->MIX_BIAS, settings->DEMOD_RDAC, settings->DEMOD_CDAC);
 }
 
 int main(int argc, char* argv[])
@@ -534,6 +698,12 @@ int main(int argc, char* argv[])
 
         if(settings.DIV_MODE==0)  //fractional mode
         {
+	    while (settings.MOD < 40)
+            {
+            	settings.MOD  *= 2;
+                settings.FRAC *= 2;
+            }
+
             printf("setting up fractional mode with divider %d %d/%d\n",settings.INT,settings.FRAC,settings.MOD);
             regs[ADRF6720_FRAC_DIV] = (uint16_t)settings.FRAC;
             regs[ADRF6720_MOD_DIV] = (uint16_t)settings.MOD;
