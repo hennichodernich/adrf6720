@@ -44,12 +44,13 @@ static void print_usage(const char *prog)
 	 "  -y --balcout  default 0\n"
 	 "  -z --mixbias  default 4\n"
 	 "  -w --bbbias   default 2\n"
-	 "  -q --rdac     default 4\n"
+	 "  -c --rdac     default 4\n"
 	 "  -u --cdac     default 1\n"
 	 "  -a --attenuation attenuation in dB, range 0 to 15, default 0.\n"
 	 "  -t --tune     tune to given frequency in MHz\n"
 	 "  -o --optimize optimize parameters for selected frequency\n"
 	 "  -j --input    0 or 1, default 0\n"
+	 "  -q --qinvert  invert Q output\n"
          "  -r --reset    reset chip first\n"
          "  -d --dump     dump registers\n"
          "  -n --nothing  do nothing (useful for plain reset or dump)\n"
@@ -72,12 +73,13 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
         { "balcout",  1, 0, 'y' },
         { "mixbias",  1, 0, 'z' },
         { "bbbias",   1, 0, 'w' },
-        { "rdac",     1, 0, 'q' },
+        { "rdac",     1, 0, 'c' },
         { "cdac",     1, 0, 'u' },
         { "attenuation", 1, 0, 'a' },
         { "input",    1, 0, 'j' },
         { "tune",     1, 0, 't' },
         { "optimize", 0, 0, 'o' },
+        { "qinvert",  0, 0, 'q' },
         { "reset",    0, 0, 'r' },
         { "dump",     0, 0, 'd' },
         { "nothing",  0, 0, 'n' },
@@ -90,7 +92,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 
     while (1) {
 
-        c = getopt_long(argc, argv, "i:f:m:h:v:s:k:x:y:z:w:q:u:a:j:t:ordnpR", lopts, NULL);
+        c = getopt_long(argc, argv, "i:f:m:h:v:s:k:x:y:z:w:c:u:a:j:t:oqrdnpR", lopts, NULL);
 
         if (c == -1)
             break;
@@ -131,7 +133,7 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
 	case 'w':
             (*settings).BB_BIAS=atoi(optarg);
             break;
-	case 'q':
+	case 'c':
             (*settings).DEMOD_RDAC=atoi(optarg);
             break;
 	case 'u':
@@ -147,6 +149,9 @@ int parse_opts(int argc, char *argv[], t_opt_struct *opt_struct, t_adrf6720_sett
             (*settings).tune_freq=atof(optarg);
 	    (*opt_struct).autotune = 1;
             break;
+	case 'q':
+	    (*settings).POLq=1;
+	    break;
         case 'o':
             (*opt_struct).optimize=1;
             break;
